@@ -1,1 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>データはどうやって届く？ 回線交換とパケット交換 | 情報Ⅰ</title>
+  <meta name="description" content="回線交換とパケット交換のちがい、パケットの分割・ヘッダ・圧縮を、動かして確かめる高校「情報Ⅰ」向けの学習アプリ。">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <h1>データは、どうやって<br>相手に届くの？</h1>
+      <p class="lead">インターネットでは、大きなデータを小さな「パケット」に分けて送ります。電話の「回線交換」とくらべながら、しくみを動かして確かめよう。</p>
+      <span class="unit">情報Ⅰ　ネットワークと情報システム</span>
+    </div>
+    <svg class="hero-art" viewBox="0 0 480 190" role="img" aria-label="長いデータが、ヘッダのついた5つのパケットに分かれるイラスト">
+      <rect class="hero-bar" x="20" y="16" width="440" height="36" rx="4"/>
+      <text x="34" y="40">元のデータ</text>
+      <path d="M240 60 v26 m-9 -9 l9 9 l9 -9" fill="none" stroke="#ffd84d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="256" y="80" style="font-family: var(--font); font-size: 13px;">分割 + ヘッダ</text>
+      <g id="hero-pkts"></g>
+      <text x="20" y="176" style="font-family: var(--font); font-size: 12px; fill:#9fb6cb;">黄色 = ヘッダ(あて先や番号が書いてある)</text>
+    </svg>
+  </div>
+</header>
+
+<nav class="tabbar" aria-label="学習メニュー">
+  <div class="wrap" role="tablist">
+    <button class="tab" role="tab" id="tab-1" data-panel="panel-1" aria-controls="panel-1" aria-selected="true">① 回線交換 と パケット交換 をくらべる</button>
+    <button class="tab" role="tab" id="tab-2" data-panel="panel-2" aria-controls="panel-2" aria-selected="false" tabindex="-1">② パケット交換を体験する</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ===================== 第1部 ===================== -->
+<section class="tabpanel" id="panel-1" role="tabpanel" aria-labelledby="tab-1">
+  <div class="wrap">
+
+    <div class="box">
+      <h2>ミッション:2組が同時に通信すると、どうなる？</h2>
+      <p><b>Aさん→Bさん</b>と<b>Cさん→Dさん</b>が、ほぼ同時にデータ(6こぶん)を送ります。まん中の<b>共用の回線(幹線)は1本だけ</b>。回線交換とパケット交換で、動きがどうちがうか見くらべましょう。</p>
+      <ul class="eyes">
+        <li>Cさんは、いつ送りはじめられる？</li>
+        <li>幹線は、むだなく使われている？</li>
+        <li>Aさんが途中で休んだら、どうなる？(下のチェックを入れてためそう)</li>
+      </ul>
+      <p class="fine" style="margin-top:10px;">※ わかりやすくするため、幹線を1本にした簡単なモデルです。実際のネットワークはもっと複雑です。</p>
+    </div>
+
+    <div class="controls">
+      <button class="btn primary" id="p1-play" type="button">▶ スタート</button>
+      <button class="btn" id="p1-step" type="button">⏭ 1コマ進める</button>
+      <button class="btn" id="p1-reset" type="button">↺ 最初から</button>
+      <label class="field">速さ
+        <select id="p1-speed">
+          <option value="1.2">ゆっくり</option>
+          <option value="2.5" selected>ふつう</option>
+          <option value="5">はやい</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="p1-pause"> Aさんが途中で通信を休む(返事を待つなど)</label>
+    </div>
+    <div class="seekbar">
+      <span>時刻</span>
+      <input type="range" id="p1-seek" min="0" max="30" step="0.05" value="0" aria-label="時刻を動かす">
+      <output id="p1-clock">0</output>
+    </div>
+
+    <div class="sims">
+      <article class="sim circuit">
+        <header>
+          <span class="mark" aria-hidden="true">☎</span>
+          <div>
+            <h3>回線交換方式</h3>
+            <p>先に「相手までの回線」を確保してから通信する(電話のしくみ)</p>
+          </div>
+        </header>
+        <div class="sim-body">
+          <div class="net" id="net-circuit"></div>
+          <p class="legend"><span class="dotkey a"></span>Aさん <span class="dotkey c"></span>Cさん / 色のついた線 = その人が<b>占有</b>している回線</p>
+          <div class="gantt" id="gantt-circuit"></div>
+          <ul class="log" id="log-circuit"></ul>
+        </div>
+      </article>
+
+      <article class="sim packet">
+        <header>
+          <span class="mark" aria-hidden="true">✉</span>
+          <div>
+            <h3>パケット交換方式</h3>
+            <p>データを小さく分けて、1つずつ送る(インターネットのしくみ)</p>
+          </div>
+        </header>
+        <div class="sim-body">
+          <div class="net" id="net-packet"></div>
+          <p class="legend"><span class="dotkey a"></span>Aさんのパケット <span class="dotkey c"></span>Cさんのパケット / 数字は「何番目のパケットか」</p>
+          <div class="gantt" id="gantt-packet"></div>
+          <ul class="log" id="log-packet"></ul>
+        </div>
+      </article>
+    </div>
+
+    <div class="box">
+      <h3>結果をくらべる</h3>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th></th><th class="c-circuit">回線交換</th><th class="c-packet">パケット交換</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>Aさんの通信が終わった時刻</th><td class="num" id="r-endA-c">…</td><td class="num" id="r-endA-p">…</td></tr>
+            <tr><th>Cさんの最初のデータが届いた時刻</th><td class="num" id="r-firstC-c">…</td><td class="num" id="r-firstC-p">…</td></tr>
+            <tr><th>Cさんの通信が終わった時刻</th><td class="num" id="r-endC-c">…</td><td class="num" id="r-endC-p">…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="takeaway" id="p1-takeaway" hidden></p>
+    </div>
+
+    <div class="box">
+      <h3>ちがいをまとめよう</h3>
+      <div class="tbl-wrap">
+        <table class="tbl">
+          <thead>
+            <tr><th></th><th class="c-circuit">回線交換方式</th><th class="c-packet">パケット交換方式</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>通信のはじめ</th><td>相手までの回線を先に確保する(接続)</td><td>接続の準備なしで、すぐ送りはじめられる</td></tr>
+            <tr><th>回線の使い方</th><td>通信している2人が回線を<b>独占</b>する</td><td>たくさんの人が同じ回線を<b>共用</b>する</td></tr>
+            <tr><th>データの送り方</th><td>とぎれずに、ひと続きで流す</td><td>パケットに分けて、1つずつ送る</td></tr>
+            <tr><th>通信していない間</th><td>回線は空いているのに、ほかの人は使えない(むだ)</td><td>空きは、ほかの人の通信が使える</td></tr>
+            <tr><th>混んだとき</th><td>回線がふさがると「話中」でつながらない</td><td>つながるが、順番待ちで届くのが遅くなる</td></tr>
+            <tr><th>例</th><td>従来の固定電話</td><td>インターネット</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="box think">
+      <h3>考えてみよう</h3>
+      <details>
+        <summary>Q1. 回線交換で、Aさんが休んでいる間も回線が「むだ」になるのはなぜ？</summary>
+        <p>回線はAさんとBさんのために予約されていて、通信が終わって開放されるまで、ほかの人は使えないからです。</p>
+      </details>
+      <details>
+        <summary>Q2. パケット交換では、なぜCさんは待たずに通信できたの？</summary>
+        <p>データが小さなパケットに分かれていて、幹線をパケット1つぶんずつ交代で使えるからです。Aさんが休んでいる間の空きも、Cさんが使えます。</p>
+      </details>
+      <details>
+        <summary>Q3. パケット交換にも困る点はある？</summary>
+        <p>混雑すると順番待ちが長くなり、届くのが遅れます。また、パケットを元の順にならべ直す仕組みが必要です(第2部で体験します)。</p>
+      </details>
+    </div>
+
+  </div>
+</section>
+
+<!-- ===================== 第2部 ===================== -->
+<section class="tabpanel" id="panel-2" role="tabpanel" aria-labelledby="tab-2" hidden>
+  <div class="wrap">
+
+    <div class="box">
+      <h2>送るデータを えらぼう</h2>
+      <div class="setting-grid">
+        <fieldset class="seg" id="p2-size">
+          <legend>データの大きさ</legend>
+          <div class="opts">
+            <label><input type="radio" name="p2size" value="small" checked><span class="seg-btn"><b>小</b><small>📝 テキスト<br>4,000バイト</small></span></label>
+            <label><input type="radio" name="p2size" value="medium"><span class="seg-btn"><b>中</b><small>🖼️ 画像<br>12,000バイト</small></span></label>
+            <label><input type="radio" name="p2size" value="large"><span class="seg-btn"><b>大</b><small>🎞️ 動画<br>36,000バイト</small></span></label>
+          </div>
+        </fieldset>
+        <div class="toggles">
+          <label class="switch"><input type="checkbox" id="p2-compress"><span>データを圧縮して送る<small>バイト数を減らしてから分割します</small></span></label>
+          <label class="switch"><input type="checkbox" id="p2-loss"><span>途中でパケットが消える<small>ネットワークの混雑や故障を再現します</small></span></label>
+        </div>
+      </div>
+      <p class="fine" style="margin-top:12px;">※ 学習用に、実際よりずっと小さなデータにしています。ふつうの写真や動画は、数百万バイト以上あります。設定を変えたら、下のステップを最初から見なおせます。</p>
+    </div>
+
+    <ol class="stepper" id="p2-stepper" aria-label="ステップ"></ol>
+
+    <div class="box" id="p2-stage">
+      <div class="stage-head">
+        <span class="no" id="p2-no">1</span>
+        <h3 id="p2-title"></h3>
+      </div>
+      <p class="stage-lead" id="p2-lead"></p>
+      <div class="stage-body" id="p2-body"></div>
+      <p class="stage-point" id="p2-point"></p>
+      <div class="stage-nav">
+        <button class="btn" id="p2-prev" type="button">◀ 前へ</button>
+        <button class="btn primary" id="p2-next" type="button">次へ ▶</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <h3>圧縮する・しないで、どう変わる？</h3>
+      <div class="tbl-wrap"><table class="tbl" id="p2-summary"></table></div>
+      <p class="fine" style="margin-top:10px;">圧縮すると、パケットの数もヘッダの合計も減ります。ただし、送る側で圧縮し、受け取る側で展開する手間はかかります。JPEG や MP3 のように、すでに圧縮されたデータは、もう一度圧縮してもあまり小さくなりません。</p>
+    </div>
+
+    <div class="box think">
+      <h3>考えてみよう</h3>
+      <details>
+        <summary>Q1. なぜ、データを小さなパケットに分けて送るの？</summary>
+        <p>大きなデータが回線を独占せず、たくさんの人が回線を共用できるからです。また、途中でなくなっても、そのパケットだけ送りなおせば済みます。</p>
+      </details>
+      <details>
+        <summary>Q2. パケットが届く順番がバラバラでも、元のデータに戻せるのはなぜ？</summary>
+        <p>ヘッダに「何番目のパケットか」を書いてあるので、受信側が番号順にならべ直せるからです。</p>
+      </details>
+      <details>
+        <summary>Q3. ヘッダをつけると、何かこまることはある？</summary>
+        <p>ヘッダの分だけ、ネットワークに流れるデータが増えます。パケットの数が多いほど、ヘッダの合計も大きくなります。</p>
+      </details>
+      <details>
+        <summary>Q4. 圧縮すると、どんなよいことがある？</summary>
+        <p>送るバイト数が減るので、パケットの数も減り、早く届きやすくなります。</p>
+      </details>
+    </div>
+
+    <div class="box vocab">
+      <h3>ことば カード</h3>
+      <dl>
+        <dt>パケット</dt><dd>データを小さく分けたもの。「ヘッダ」と「データ部分」でできている</dd>
+        <dt>ヘッダ</dt><dd>パケットの先頭につける情報。宛先・送信元のIPアドレス、パケット番号など</dd>
+        <dt>ルータ</dt><dd>ヘッダの宛先IPアドレスを見て、パケットを次に送る先を決める機器</dd>
+        <dt>ルーティング</dt><dd>パケットを目的地まで届けるために、通る経路を選ぶこと</dd>
+        <dt>TTL</dt><dd>パケットの寿命。ルータを通るたびに1減り、0になると捨てられる</dd>
+        <dt>圧縮・展開</dt><dd>データのバイト数を減らすことを圧縮、元にもどすことを展開(解凍)という</dd>
+      </dl>
+    </div>
+
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">情報Ⅰ「ネットワークと情報システム」学習アプリ ／ IPアドレスは、学習用に予約されている番号を使っています。</div>
+</footer>
+
+<noscript><p style="padding:16px;text-align:center;">このアプリは JavaScript を使います。ブラウザの設定で JavaScript を有効にしてください。</p></noscript>
+<script src="script.js"></script>
+</body>
+</html>
